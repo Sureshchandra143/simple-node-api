@@ -5,3 +5,33 @@ workflows:
   heroku_deploy:
     jobs:
       - heroku/deploy-via-git
+      
+  staging:
+  machine: true
+  working_directory: ~/simple-node-api
+  steps:
+    - checkout
+    - run: |-
+        cat >~/.netrc <<EOF
+        machine api.heroku.com
+          login $HEROKU_USERNAME
+          password $HEROKU_PASSWORD
+        machine git.heroku.com
+          login $HEROKU_USERNAME
+          password $HEROKU_PASSWORD
+        EOF
+    - run: chmod 600 ~/.netrc 
+    - run: heroku git:remote -a my-app-staging
+    - run: git push heroku staging:master
+    - run: heroku run rake db:migrate --app my-app-staging
+workflows:
+  version: 2
+  build_test_deploy:
+    jobs:
+      - build
+      - staging:
+          requires:
+            - build
+          filters:
+            branches:
+              only: staging
